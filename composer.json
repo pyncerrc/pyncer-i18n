@@ -1,0 +1,23 @@
+{
+    "name": "pyncer/i18n",
+    "type": "library",
+    "description": "Pyncer library for handling i18n.",
+    "homepage": "https://pyncer.com/i18n",
+    "license": "Unlicense",
+    "require": {
+        "php": ">=8.1",
+        "pyncer/core": "*",
+        "pyncer/exception": "*",
+        "pyncer/unit": "*",
+        "pyncer/source": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Pyncer\\I18n\\": "src/"
+        }
+    },
+    "support": {
+        "issues": "https://github.com/pyncerrc/pyncer-i18n/issues",
+        "source": "https://github.com/pyncerrc/pyncer-i18n"
+    }
+}
