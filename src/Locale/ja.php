@@ -4,6 +4,7 @@ namespace Pyncer\I18n\Locale;
 use Pyncer\I18n\AbstractLocale;
 use Pyncer\I18n\I18n;
 use Pyncer\I18n\ListStyle;
+use Pyncer\I18n\Rule;
 
 class ja extends AbstractLocale
 {
@@ -11,10 +12,10 @@ class ja extends AbstractLocale
         I18n $i18n,
         string $code = 'ja',
         string $name = '日本語',
-        ?string $codeShort = null,
-        ?string $nameShort = null,
+        ?string $shortCode = null,
+        ?string $shortName = null,
     ) {
-        parent::__construct($i18n, $code, $name, $codeShort, $nameShort);
+        parent::__construct($i18n, $code, $name, $shortCode, $shortName);
     }
 
     public function formatList(
@@ -58,18 +59,24 @@ class ja extends AbstractLocale
         return $list;
     }
 
-    public function getCardinalRule(int|float $value, bool $none = false)
+    public function getCardinalRule(
+        int|float $value,
+        bool $none = false
+    ): Rule
     {
         if ($none && ($value === 0 || $value === 0.0)) {
-            return 'none';
+            return Rule::NONE;
         }
 
-        return 'other';
+        return Rule::OTHER;
     }
 
-    public function getRangeRule(int|float $startValue, int|float $endValue)
+    public function getRangeRule(
+        int|float $startValue,
+        int|float $endValue
+    ): Rule
     {
-        return 'other';
+        return Rule::OTHER;
     }
 
     protected static $sizeMessages = [

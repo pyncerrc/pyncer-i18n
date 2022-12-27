@@ -10,9 +10,9 @@ class fr_CA extends fr
         I18n $i18n,
         string $code = 'fr-CA',
         string $name = 'Français Canada',
-        ?string $codeShort = 'fr',
-        ?string $nameShort = 'Français',
+        ?string $shortCode = 'fr',
+        ?string $shortName = 'Français',
     ) {
-        parent::__construct($i18n, $code, $name, $codeShort, $nameShort);
+        parent::__construct($i18n, $code, $name, $shortCode, $shortName);
     }
 }

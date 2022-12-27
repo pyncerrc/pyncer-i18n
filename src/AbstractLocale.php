@@ -42,8 +42,8 @@ abstract class AbstractLocale implements LocaleInterface
         protected I18n $i18n,
         protected string $code,
         protected string $name,
-        protected ?string $codeShort = null,
-        protected ?string $nameShort = null,
+        protected ?string $shortCode = null,
+        protected ?string $shortName = null,
     )
     {}
 
@@ -51,17 +51,17 @@ abstract class AbstractLocale implements LocaleInterface
     {
         return $this->code;
     }
-    public function getCodeShort(): string
+    public function getShortCode(): string
     {
-        return $this->codeShort ?? $this->code;
+        return $this->shortCode ?? $this->code;
     }
     public function getName(): string
     {
-        return $this->name();
+        return $this->name;
     }
-    public function getNameShort(): string
+    public function getShortName(): string
     {
-        return $this->nameShort ?? $this->name;
+        return $this->shortName ?? $this->name;
     }
 
     public function has(
@@ -77,26 +77,26 @@ abstract class AbstractLocale implements LocaleInterface
     }
     public function get(
         string $key,
-        Rule $rule = Rule::OTHER,
         iterable $args = [],
+        Rule $rule = Rule::OTHER,
         ?iterable $sourceNames = null,
-    ): ?string
+    ): string
     {
         return $this->i18n->get(
             key: $key,
-            args: $args,
             rule: $rule,
+            args: $args,
             localeCodes: $this->getLocaleCodes(),
             sourceNames: $sourceNames
         );
     }
     private function getLocaleCodes()
     {
-        if ($this->getCode() === $this->getCodeShort()) {
+        if ($this->getCode() === $this->getShortCode()) {
             return [$this->getCode()];
         }
 
-        return [$this->getCode(), $this->getCodeShort()];
+        return [$this->getCode(), $this->getShortCode()];
     }
 
     public function pluralize(string|array $options, Rule $rule): string
@@ -371,7 +371,7 @@ abstract class AbstractLocale implements LocaleInterface
         bool $short = false,
     ): string
     {
-        $rule = $this->getCardinalRule($value);
+        $rule = $this->getCardinalRule($value)->getName();
         $value = $this->formatDecimal($value, $decimals);
 
         $key = 'unit.length.' . $unit->getName();
@@ -395,7 +395,7 @@ abstract class AbstractLocale implements LocaleInterface
         bool $short = false,
     ): string
     {
-        $rule = $this->getCardinalRule($value);
+        $rule = $this->getCardinalRule($value)->getName();
         $value = $this->formatDecimal($value, $decimals);
 
         $key = 'unit.mass.' . $unit->getName();
@@ -418,7 +418,7 @@ abstract class AbstractLocale implements LocaleInterface
         bool $short = false,
     ): string
     {
-        $rule = $this->getCardinalRule($value);
+        $rule = $this->getCardinalRule($value)->getName();
         $value = $this->formatInteger($value);
 
         $key = 'unit.size.' . $unit->getName();
@@ -478,10 +478,10 @@ abstract class AbstractLocale implements LocaleInterface
         }
 
         if ($this->resourceBundleShort === null &&
-            $this->getCode() !== $this->getCodeShort()
+            $this->getCode() !== $this->getShortCode()
         ) {
             $this->resourceBundleShort = new ResourceBundle(
-                $this->getCodeShort(),
+                $this->getShortCode(),
                 'ICUDATA-unit'
             );
         }

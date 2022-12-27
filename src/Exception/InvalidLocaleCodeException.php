@@ -4,7 +4,7 @@ namespace Pyncer\I18n\Exception;
 use Pyncer\Exception\InvalidArgumentException;
 use Throwable;
 
-class InvalidLocaleException extends InvalidArgumentException
+class InvalidLocaleCodeException extends InvalidArgumentException
 {
     protected string $localeCode;
 
@@ -16,7 +16,7 @@ class InvalidLocaleException extends InvalidArgumentException
         $this->localeCode = $localeCode;
 
         parent::__construct(
-            'The specified locale, ' . $localeCode . ', is invalid.',
+            'The specified locale code, ' . $localeCode . ', is invalid.'
             $code,
             $previous
         );

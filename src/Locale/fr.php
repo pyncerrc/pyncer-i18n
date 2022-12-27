@@ -4,6 +4,7 @@ namespace Pyncer\I18n\Locale;
 use Pyncer\I18n\AbstractLocale;
 use Pyncer\I18n\I18n;
 use Pyncer\I18n\ListStyle;
+use Pyncer\I18n\Rule;
 
 class fr extends AbstractLocale
 {
@@ -12,10 +13,10 @@ class fr extends AbstractLocale
         I18n $i18n,
         string $code = 'fr',
         string $name = 'Français',
-        ?string $codeShort = null,
-        ?string $nameShort = null,
+        ?string $shortCode = null,
+        ?string $shortName = null,
     ) {
-        parent::__construct($i18n, $code, $name, $codeShort, $nameShort);
+        parent::__construct($i18n, $code, $name, $shortCode, $shortName);
     }
 
     public function formatList(
@@ -55,22 +56,28 @@ class fr extends AbstractLocale
         return $list;
     }
 
-    public function getCardinalRule(int|float $value, bool $none = false)
+    public function getCardinalRule(
+        int|float $value,
+        bool $none = false
+    ): Rule
     {
         if ($none && ($value === 0 || $value === 0.0)) {
-            return 'none';
+            return Rule::NONE;
         }
 
         $value = abs(intval($value));
 
         if ($value === 0 || $value === 1) {
-            return 'one';
+            return Rule::ONE;
         }
 
-        return 'other';
+        return Rule::OTHER;
     }
 
-    public function getRangeRule(int|float $startValue, int|float $endValue)
+    public function getRangeRule(
+        int|float $startValue,
+        int|float $endValue
+    ): Rule
     {
         return $this->getNumberRule($endValue);
     }

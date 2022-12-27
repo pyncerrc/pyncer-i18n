@@ -10,9 +10,9 @@ class en_AU extends en
         I18n $i18n,
         string $code = 'en-AU',
         string $name = 'English Australia',
-        ?string $codeShort = 'en',
-        ?string $nameShort = 'English',
+        ?string $shortCode = 'en',
+        ?string $shortName = 'English',
     ) {
-        parent::__construct($i18n, $code, $name, $codeShort, $nameShort);
+        parent::__construct($i18n, $code, $name, $shortCode, $shortName);
     }
 }

@@ -13,9 +13,9 @@ use Pyncer\Unit\SizeUnit;
 interface LocaleInterface
 {
     public function getCode(): string;
-    public function getCodeShort(): string;
+    public function getShortCode(): string;
     public function getName(): string;
-    public function getNameShort(): string;
+    public function getShortName(): string;
 
     public function has(
         string $key,
@@ -23,17 +23,22 @@ interface LocaleInterface
     ): bool;
     public function get(
         string $key,
-        Rule $rule = Rule::OTHER,
         iterable $args = [],
+        Rule $rule = Rule::OTHER,
         ?iterable $sourceNames = null,
-    ): ?string;
+    ): string;
 
     public function pluralize(string|array $values, Rule $rule): string;
     public function transform(string $value, string $method): string;
 
-    //https://www.unicode.org/cldr/cldr-aux/charts/33/supplemental/language_plural_rules.html
-    public function getCardinalRule(int|float $value, bool $none = false);
-    public function getRangeRule(int|float $startValue, int|float $endValue);
+    public function getCardinalRule(
+        int|float $value,
+        bool $none = false
+    ): Rule;
+    public function getRangeRule(
+        int|float $startValue,
+        int|float $endValue
+    ): Rule;
 
     public function formatList(
         array $items,

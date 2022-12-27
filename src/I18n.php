@@ -2,13 +2,13 @@
 namespace Pyncer\I18n;
 
 use DateTimeInterface;
-use Pyncer\Exception\InvalidArgumentException;
-use Pyncer\Exception\UnexpectedValueException;
+use Pyncer\I18n\DateStyle;
+use Pyncer\I18n\InvalidLocaleCodeException;
+use Pyncer\I18n\LocaleNotFoundException;
+use Pyncer\I18n\ListStyle;
 use Pyncer\I18n\LocaleInterface;
 use Pyncer\I18n\LocaleSourcer;
 use Pyncer\I18n\Rule;
-use Pyncer\I18n\DateStyle;
-use Pyncer\I18n\ListStyle;
 use Pyncer\I18n\TimeStyle;
 use Pyncer\Source\SourceDirector;
 use Pyncer\Source\SourceMap;
@@ -20,6 +20,7 @@ use function array_key_exists;
 use function array_search;
 use function array_values;
 use function in_array;
+use function Pyncer\Array\ensure_array as pyncer_ensure_array;
 use function strval;
 
 use const DIRECTORY_SEPARATOR as DS;
@@ -29,7 +30,8 @@ class I18n
     protected SourceMap $sourceMap;
     protected SourceDirector $sourceDirector;
     protected array $locales = [];
-    protected array $defaultLocaleCodes = [];
+    protected ?array $defaultLocaleCodes = null;
+    protected ?array $fallbackLocaleCodes = null;
 
     public function __construct(SourceMap $sourceMap) {
         $this->sourceMap = $sourceMap;
@@ -38,23 +40,26 @@ class I18n
 
     public function hasLocale(string $localeCode): bool
     {
-        $localeCode = str_replace('_', '-', strtolower($localeCode));
+        $localeCode = $this->cleanLocaleCode($localeCode);
         return array_key_exists($localeCode, $this->locales);
     }
 
-    public function getLocale(string $localeCode): ?LocaleInterface
+    public function getLocale(string $localeCode): LocaleInterface
     {
-        return $this->locales[$localeCode] ?? null;
+        $localeCode = $this->cleanLocaleCode($localeCode);
+
+        if (!$this->hasLocale($localeCode)) {
+            throw new LocaleNotFoundException($localeCode);
+        }
+
+        return $this->locales[$localeCode];
     }
 
-    public function addLocale(
-        string $localeCode,
-        bool $isDefault = false
-    ): static
+    public function addLocale(string $localeCode): static
     {
         $locale = $this->initializeLocale($localeCode);
 
-        $localeCode = str_replace('_', '-', strtolower($locale->getCode()));
+        $localeCode = $this->cleanLocaleCode($locale->getCode());
         $this->locales[$localeCode] = $locale;
 
         if (!$this->sourceDirector->hasSource($localeCode)) {
@@ -62,42 +67,33 @@ class I18n
             $this->sourceDirector->addSourcer($sourcer);
         }
 
-        if ($isDefault) {
-            // If already in list, move to last position
-            $index = array_search(
-                $locale->getCode(),
-                $this->defaultLocaleCodes
-            );
-
-            if ($index !== false) {
-                unset($this->defaultLocaleCodes[$index]);
-                $this->defaultLocaleCodes = array_values(
-                    $this->defaultLocaleCodes
-                );
-            }
-
-            $this->defaultLocaleCodes[] = $locale->getCode();
-        }
-
-        if ($locale->getCodeShort() !== $locale->getCode()) {
-            return $this->addLocale($locale->getCodeShort(), $isDefault);
+        if ($locale->getShortCode() !== $locale->getCode()) {
+            $this->addLocale($locale->getShortCode());
         }
 
         return $this;
     }
 
+    public function getLocales(): array
+    {
+        return $this->locales;
+    }
+    public function getLocaleCodes(): array
+    {
+        return array_keys($this->locales);
+    }
+
     protected function initializeLocale(string $localeCode): LocaleInterface
     {
         if (!preg_match('/\A[a-zA-Z_-]+\z/', $localeCode)) {
-            throw new InvalidArgumentException(
-                 'The specified locale code, ' . $localeCode . ', is invalid.'
-            );
+            throw new InvalidLocaleCodeException($localeCode);
         }
 
-        $localeCode = str_replace('-', '_', $localeCode);
-        $localeCode = explode('_', $localeCode);
-        if (count($localeCode) > 1) {
-            $localeCode[1] = strtoupper($localeCode[1]);
+        $localeCode = $this->cleanLocaleCode($localeCode);
+        $localeCode = explode('-', $localeCode);
+        $count = count($localeCode);
+        if ($count > 1) {
+            $localeCode[$count - 1] = strtoupper($localeCode[$count - 1]);
         }
         $localeCode = implode('_', $localeCode);
 
@@ -111,24 +107,82 @@ class I18n
         return new $class($this);
     }
 
+    private function cleanLocaleCode(string $localeCode): string
+    {
+        return str_replace('_', '-', strtolower($localeCode));
+    }
+
     public function getDefaultLocale(): ?LocaleInterface
     {
-        if (!$this->defaultLocaleCodes) {
-            throw new UnexpectedValueException(
-                'No default locale codes have been specified.'
-            );
+        $localeCode = $this->getDefaultLocaleCode();
+
+        if ($localeCode !== null) {
+            return $this->getLocale($localeCode);
         }
 
-        return $this->getLocale($this->defaultLocaleCodes[0]);
+        return null;
     }
 
-    public function getDefaultLocaleCodes(): iterable
+    public function getDefaultLocaleCode(): ?string
     {
-        return $this->defaultLocaleCodes;
+        if ($this->defaultLocaleCodes !== null) {
+            return $this->defaultLocaleCodes[0];
+        }
+
+        return null;
     }
-    public function getLocaleCodes(): iterable
+    public function setDefaultLocaleCode(?string $value): static
     {
-        return array_keys($this->locales);
+        if ($value === null) {
+            $this->defaultLocaleCodes = null;
+            return $this;
+        }
+
+        $locale = $this->getLocale($value);
+
+        $this->defaultLocaleCodes = [$locale->getCode()];
+
+        if ($locale->getShortCode() !== $locale->getCode()) {
+            $this->defaultLocaleCodes[] = $locale->getShortCode();
+        }
+
+        return $this;
+    }
+
+    public function getFallbackLocale(): ?LocaleInterface
+    {
+        $localeCode = $this->getFallbackLocaleCode();
+
+        if ($localeCode !== null) {
+            return $this->getLocale($localeCode);
+        }
+
+        return null;
+    }
+    public function getFallbackLocaleCode(): ?string
+    {
+        if ($this->fallbackLocaleCodes !== null) {
+            return $this->fallbackLocaleCodes[0];
+        }
+
+        return null;
+    }
+    public function setFallbackLocaleCode(?string $value): static
+    {
+        if ($value === null) {
+            $this->fallbackLocaleCodes = null;
+            return $this;
+        }
+
+        $locale = $this->getLocale($value);
+
+        $this->fallbackLocaleCodes = [$locale->getCode()];
+
+        if ($locale->getShortCode() !== $locale->getCode()) {
+            $this->fallbackLocaleCodes[] = $locale->getShortCode();
+        }
+
+        return $this;
     }
 
     public function has(
@@ -137,40 +191,37 @@ class I18n
         ?iterable $sourceNames = null,
     ): bool
     {
-        $localeCodes ??= $this->getDefaultLocaleCodes();
-        $localeCodes = array_map(function($value) {
-            return str_replace('_', '-', strtolower($localeCode));
-        }, $localeCodes);
+        $localeCodes = $this->getRankedLocaleCodes($localeCodes);
+
         return $this->sourceDirector->has($key, $localeCodes, $sourceNames);
     }
 
     public function get(
         string $key,
-        Rule $rule = Rule::OTHER,
         iterable $args = [],
+        Rule $rule = Rule::OTHER,
         ?iterable $localeCodes = null,
         ?iterable $sourceNames = null,
-    ): ?string
+    ): string
     {
-        $localeCodes ??= $this->getDefaultLocaleCodes();
-        $localeCodes = array_map(function($value) {
-            return str_replace('_', '-', strtolower($localeCode));
-        }, $localeCodes);
+        $localeCodes = $this->getRankedLocaleCodes($localeCodes);
+
         $result = $this->sourceDirector->get($key, $localeCodes, $sourceNames);
 
         if ($result === null) {
-            return $result;
+            $value = $key;
+        } else {
+            $locale = $this->getLocale($result->getSourcerName());
+
+            $value = $locale->pluralize($result->getValue(), $rule);
         }
-
-        $locale = $this->getLocale($result->getSourcerName());
-
-        $value = $locale->pluralize($result->getValue(), $rule);
 
         if (!$args) {
             return $value;
         }
 
-        $keys = array_keys(pyncer_ensure_array($args));
+        $args = pyncer_ensure_array($args);
+        $keys = array_keys($args);
         rsort($keys); // Reverse sort keys so longest is first
 
         foreach ($keys as $key) {
@@ -215,39 +266,137 @@ class I18n
             }
         }
 
-        return $text;
+        return $value;
+    }
+
+    public function getRankedLocaleCodes(?array $localeCodes = null): array
+    {
+        if ($localeCodes === null) {
+            if ($this->defaultLocaleCodes) {
+                $localeCodes = $this->defaultLocaleCodes;
+
+                if ($this->fallbackLocaleCodes) {
+                    $localeCodes = [
+                        ...$localeCodes,
+                        ...$this->fallbackLocaleCodes
+                    ];
+                }
+            } else {
+                $localeCodes = $this->getLocaleCodes();
+            }
+        } else {
+            $localeCodes = array_map(
+                function($value) {
+                    return $this->cleanLocaleCode($value);
+                },
+                $localeCodes
+            );
+
+            if ($this->fallbackLocaleCodes) {
+                $localeCodes = [
+                    ...$localeCodes,
+                    ...$this->fallbackLocaleCodes
+                ];
+            }
+        }
+
+        $localeCodes = array_unique($localeCodes);
+
+        return $localeCodes;
     }
 
     public function getCode(): string
     {
-        return $this->getDefaultLocale()->getCode();
+        $locale = $this->getDefaultLocale();
+
+        if ($locale === null) {
+            throw new UnexpectedValueException(
+                'A default locale has not been set.'
+            );
+        }
+
+        return $locale->getCode();
     }
-    public function getCodeShort(): string
+    public function getShortCode(): string
     {
-        return $this->getDefaultLocale()->getCodeShort();
+        $locale = $this->getDefaultLocale();
+
+        if ($locale === null) {
+            throw new UnexpectedValueException(
+                'A default locale has not been set.'
+            );
+        }
+
+        return $locale->getShortCode();
     }
     public function getName(): string
     {
-        return $this->getDefaultLocale()->getName();
+        $locale = $this->getDefaultLocale();
+
+        if ($locale === null) {
+            throw new UnexpectedValueException(
+                'A default locale has not been set.'
+            );
+        }
+
+        return $locale->getName();
     }
-    public function getNameShort(): string
+    public function getShortName(): string
     {
-        return $this->getDefaultLocale()->getNameShort();
+        $locale = $this->getDefaultLocale();
+
+        if ($locale === null) {
+            throw new UnexpectedValueException(
+                'A default locale has not been set.'
+            );
+        }
+
+        return $locale->getShortName();
     }
 
     public function pluralize(array $options, Rule $rule): string
     {
-        return $this->getDefaultLocale()->pluralize($options, $rule);
+        $locale = $this->getDefaultLocale();
+
+        if ($locale === null) {
+            throw new UnexpectedValueException(
+                'A default locale has not been set.'
+            );
+        }
+
+        return $locale->pluralize($options, $rule);
     }
 
-    public function getCardinalRule(int|float $value, bool $none = false)
+    public function getCardinalRule(
+        int|float $value,
+        bool $none = false
+    ): Rule
     {
-        return $this->getDefaultLocale()->getCardinalRule($value, $none);
+        $locale = $this->getDefaultLocale();
+
+        if ($locale === null) {
+            throw new UnexpectedValueException(
+                'A default locale has not been set.'
+            );
+        }
+
+        return $locale->getCardinalRule($value, $none);
     }
 
-    public function getRangeRule(int|float $startValue, int|float $endValue)
+    public function getRangeRule(
+        int|float $startValue,
+        int|float $endValue
+    ): Rule
     {
-        return $this->getDefaultLocale()->getRangeRule($startValue, $endValue);
+        $locale = $this->getDefaultLocale();
+
+        if ($locale === null) {
+            throw new UnexpectedValueException(
+                'A default locale has not been set.'
+            );
+        }
+
+        return $locale->getRangeRule($startValue, $endValue);
     }
 
     public function formatList(
@@ -255,7 +404,15 @@ class I18n
         ListStyle $style = ListStyle::AND
     ): string
     {
-        return $this->getDefaultLocale()->formatList($items, $style);
+        $locale = $this->getDefaultLocale();
+
+        if ($locale === null) {
+            throw new UnexpectedValueException(
+                'A default locale has not been set.'
+            );
+        }
+
+        return $locale->formatList($items, $style);
     }
 
     public function formatDate(
@@ -263,7 +420,15 @@ class I18n
         DateStyle $dateStyle = DateStyle::SHORT
     ): string
     {
-        return $this->getDefaultLocale()->formatDate(
+        $locale = $this->getDefaultLocale();
+
+        if ($locale === null) {
+            throw new UnexpectedValueException(
+                'A default locale has not been set.'
+            );
+        }
+
+        return $locale->formatDate(
             $value,
             $dateStyle
         );
@@ -274,7 +439,15 @@ class I18n
         TimeStyle $timeStyle = TimeStyle::SHORT
     ): string
     {
-        return $this->getDefaultLocale()->formatTime(
+        $locale = $this->getDefaultLocale();
+
+        if ($locale === null) {
+            throw new UnexpectedValueException(
+                'A default locale has not been set.'
+            );
+        }
+
+        return $locale->formatTime(
             $value,
             $timeStyle
         );
@@ -287,7 +460,15 @@ class I18n
         ?string $patternSkeleton = null
     ): string
     {
-        return $this->getDefaultLocale()->formatDateTime(
+        $locale = $this->getDefaultLocale();
+
+        if ($locale === null) {
+            throw new UnexpectedValueException(
+                'A default locale has not been set.'
+            );
+        }
+
+        return $locale->formatDateTime(
             $value,
             $dateStyle,
             $timeStyle,
@@ -297,30 +478,78 @@ class I18n
 
     public function formatInteger(int $value): string
     {
-        return $this->getDefaultLocale()->formatInteger($value);
+        $locale = $this->getDefaultLocale();
+
+        if ($locale === null) {
+            throw new UnexpectedValueException(
+                'A default locale has not been set.'
+            );
+        }
+
+        return $locale->formatInteger($value);
     }
 
     public function formatDecimal(int|float $value, ?int $decimals = null): string
     {
-        return $this->getDefaultLocale()->formatDecimal($value, $decimals);
+        $locale = $this->getDefaultLocale();
+
+        if ($locale === null) {
+            throw new UnexpectedValueException(
+                'A default locale has not been set.'
+            );
+        }
+
+        return $locale->formatDecimal($value, $decimals);
     }
 
     public function formatPercent(int|float $value, ?int $decimals = null): string
     {
-        return $this->getDefaultLocale()->formatPercent($value, $decimals);
+        $locale = $this->getDefaultLocale();
+
+        if ($locale === null) {
+            throw new UnexpectedValueException(
+                'A default locale has not been set.'
+            );
+        }
+
+        return $locale->formatPercent($value, $decimals);
     }
 
     public function formatOrdinal(int $value): string
     {
-        return $this->getDefaultLocale()->formatOrdinal($value);
+        $locale = $this->getDefaultLocale();
+
+        if ($locale === null) {
+            throw new UnexpectedValueException(
+                'A default locale has not been set.'
+            );
+        }
+
+        return $locale->formatOrdinal($value);
     }
     public function formatSpellout(int|float $value, ?int $decimals = null): string
     {
-        return $this->getDefaultLocale()->formatSpellout($value, $decimals);
+        $locale = $this->getDefaultLocale();
+
+        if ($locale === null) {
+            throw new UnexpectedValueException(
+                'A default locale has not been set.'
+            );
+        }
+
+        return $locale->formatSpellout($value, $decimals);
     }
     public function formatDuration(int $value): string
     {
-        return $this->getDefaultLocale()->formatDuration($value);
+        $locale = $this->getDefaultLocale();
+
+        if ($locale === null) {
+            throw new UnexpectedValueException(
+                'A default locale has not been set.'
+            );
+        }
+
+        return $locale->formatDuration($value);
     }
 
     public function formatCurrency(
@@ -331,7 +560,15 @@ class I18n
         bool $accounting = false,
     ): string
     {
-        return $this->getDefaultLocale()->formatCurrency(
+        $locale = $this->getDefaultLocale();
+
+        if ($locale === null) {
+            throw new UnexpectedValueException(
+                'A default locale has not been set.'
+            );
+        }
+
+        return $locale->formatCurrency(
             $value,
             $currencyCode,
             $trimDecimals,
@@ -347,7 +584,15 @@ class I18n
         bool $longForm = false,
     ): string
     {
-        return $this->getDefaultLocale()->formatLength(
+        $locale = $this->getDefaultLocale();
+
+        if ($locale === null) {
+            throw new UnexpectedValueException(
+                'A default locale has not been set.'
+            );
+        }
+
+        return $locale->formatLength(
             $value,
             $decimals,
             $unit,
@@ -362,7 +607,15 @@ class I18n
         bool $longForm = false,
     ): string
     {
-        return $this->getDefaultLocale()->formatMass(
+        $locale = $this->getDefaultLocale();
+
+        if ($locale === null) {
+            throw new UnexpectedValueException(
+                'A default locale has not been set.'
+            );
+        }
+
+        return $locale->formatMass(
             $value,
             $decimals,
             $unit,
@@ -376,7 +629,15 @@ class I18n
         bool $longForm = false,
     ): string
     {
-        return $this->getDefaultLocale()->formatSize(
+        $locale = $this->getDefaultLocale();
+
+        if ($locale === null) {
+            throw new UnexpectedValueException(
+                'A default locale has not been set.'
+            );
+        }
+
+        return $locale->formatSize(
             $value,
             $unit,
             $longForm

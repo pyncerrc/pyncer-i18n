@@ -7,7 +7,7 @@
     "require": {
         "php": ">=8.1",
         "pyncer/core": "*",
-        "pyncer/exception": "*",
+        "pyncer/exception": "^1.0",
         "pyncer/unit": "*",
         "pyncer/source": "*"
     },
