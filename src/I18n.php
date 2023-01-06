@@ -354,7 +354,7 @@ class I18n
         return $locale->getShortName();
     }
 
-    public function pluralize(array $options, Rule $rule): string
+    public function pluralize(string|array $options, Rule $rule): string
     {
         $locale = $this->getDefaultLocale();
 
