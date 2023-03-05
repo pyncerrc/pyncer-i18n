@@ -19,5 +19,10 @@
     "support": {
         "issues": "https://github.com/pyncerrc/pyncer-i18n/issues",
         "source": "https://github.com/pyncerrc/pyncer-i18n"
+    },
+    "extra" : {
+        "branch-alias" : {
+            "dev-main" : "1.0-dev"
+        }
     }
 }
