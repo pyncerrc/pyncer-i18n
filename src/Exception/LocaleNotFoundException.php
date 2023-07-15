@@ -13,13 +13,14 @@ class LocaleNotFoundException extends RuntimeException
         int $code = 0,
         ?\Throwable $previous = null
     ) {
+        $this->localeCode = $localeCode;
+
         parent::__construct(
             'The specified locale, ' . $localeCode . ', was not found.',
             $code,
             $previous
         );
 
-        $this->localeCode = $localeCode;
     }
 
     public function getLocaleCode(): string

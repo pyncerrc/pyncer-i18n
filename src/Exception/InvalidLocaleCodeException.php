@@ -16,7 +16,7 @@ class InvalidLocaleCodeException extends InvalidArgumentException
         $this->localeCode = $localeCode;
 
         parent::__construct(
-            'The specified locale code, ' . $localeCode . ', is invalid.'
+            'The specified locale code, ' . $localeCode . ', is invalid.',
             $code,
             $previous
         );
