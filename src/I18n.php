@@ -11,7 +11,7 @@ use Pyncer\I18n\LocaleSourcer;
 use Pyncer\I18n\Rule;
 use Pyncer\I18n\TimeStyle;
 use Pyncer\Source\SourceDirector;
-use Pyncer\Source\SourceMap;
+use Pyncer\Source\SourceMapInterface;
 use Pyncer\Unit\LengthUnit;
 use Pyncer\Unit\MassUnit;
 use Pyncer\Unit\SizeUnit;
@@ -27,13 +27,13 @@ use const DIRECTORY_SEPARATOR as DS;
 
 class I18n
 {
-    protected SourceMap $sourceMap;
+    protected SourceMapInterface $sourceMap;
     protected SourceDirector $sourceDirector;
     protected array $locales = [];
     protected ?array $defaultLocaleCodes = null;
     protected ?array $fallbackLocaleCodes = null;
 
-    public function __construct(SourceMap $sourceMap) {
+    public function __construct(SourceMapInterface $sourceMap) {
         $this->sourceMap = $sourceMap;
         $this->sourceDirector = new SourceDirector();
     }
