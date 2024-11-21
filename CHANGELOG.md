@@ -1,5 +1,11 @@
 # Change Log
 
+## 1.0.3 - Unreleased
+
+### Changed
+
+- Renamed internal function for consistency.
+
 ## 1.0.2 - 2024-03-27
 
 ### Changed

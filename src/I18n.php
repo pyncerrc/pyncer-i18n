@@ -57,7 +57,7 @@ class I18n
 
     public function addLocale(string $localeCode): static
     {
-        $locale = $this->initializeLocale($localeCode);
+        $locale = $this->forgeLocale($localeCode);
 
         $localeCode = $this->cleanLocaleCode($locale->getCode());
         $this->locales[$localeCode] = $locale;
@@ -83,7 +83,7 @@ class I18n
         return array_keys($this->locales);
     }
 
-    protected function initializeLocale(string $localeCode): LocaleInterface
+    protected function forgeLocale(string $localeCode): LocaleInterface
     {
         if (!preg_match('/\A[a-zA-Z_-]+\z/', $localeCode)) {
             throw new InvalidLocaleCodeException($localeCode);
